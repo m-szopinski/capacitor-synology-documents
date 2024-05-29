@@ -9,6 +9,17 @@ npm install capacitor-synology-documents
 npx cap sync
 ```
 
+## Usage
+
+```ts
+import {SynologyDocs} from "capacitor-synology-documents";
+
+SynologyDocs.configure('synology ip');
+
+SynologyDocs.auth('username', 'password', 'otp (optional)');
+
+```
+
 ## API
 
 <docgen-index>

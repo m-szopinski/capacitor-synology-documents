@@ -1,10 +1,7 @@
 import { CapacitorHttp, WebPlugin } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 export class SynologyDocsWeb extends WebPlugin {
-  private url?: string;
-  private sid?: string;
-  private synoToken?: string;
-
   async echo(options: { value: string }): Promise<{ value: string }> {
     console.log('ECHO', options);
     return options;
@@ -12,18 +9,10 @@ export class SynologyDocsWeb extends WebPlugin {
 
   constructor() {
     super();
-    const sid = localStorage.getItem('_sid');
-    if (sid) {
-      this.sid = sid;
-    }
-    const synoToken = localStorage.getItem('_synoToken');
-    if (synoToken) {
-      this.synoToken = synoToken;
-    }
   }
 
   public configure(url: string): void {
-    this.url = url;
+    localStorage.setItem('_syno_url', url);
   }
 
   async auth(
@@ -44,36 +33,44 @@ export class SynologyDocsWeb extends WebPlugin {
     if (otp_code) {
       params['otp_code'] = otp_code;
     }
-    return this.get(`${this.url}/webapi/auth.cgi`, params).then(res => {
+    return this.get(`/webapi/auth.cgi`, params).then(async res => {
       const synoToken = res.data?.data?.synotoken;
       if (synoToken) {
-        this.synoToken = synoToken;
-        localStorage.setItem('_synoToken', synoToken);
+        await this.setPreferences('_syno_token', synoToken);
       }
       const sid = res.data?.data?.sid;
       if (sid) {
-        this.sid = sid;
-        localStorage.setItem('_sid', sid);
-        return !!(this.sid && this.sid.length > 0);
+        await this.setPreferences('_syno_sid', sid);
+        return !!(sid && sid.length > 0);
       }
       return false;
     });
   }
 
-  async list(path: string): Promise<{
-    folders: {
+  async readdir(path: string): Promise<
+    {
       isdir: boolean;
       name: string;
       path: string;
-    }[];
-  }> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+    }[]
+  > {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.List',
       version: '2',
       method: 'list',
       folder_path: path,
       additional: ['real_path', 'size', 'time', 'type'],
     }).then(res => res.data.data?.files);
+  }
+
+  async fileExist(path: string): Promise<boolean> {
+    return this.get('/webapi/entry.cgi', {
+      api: 'SYNO.FileStation.List',
+      version: '2',
+      method: 'list',
+      folder_path: path,
+      additional: ['real_path', 'size', 'time', 'type'],
+    }).then(res => !!res.data.data?.files[0]);
   }
 
   async rename(
@@ -84,7 +81,7 @@ export class SynologyDocsWeb extends WebPlugin {
     name: string;
     path: string;
   }> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.Rename',
       version: '2',
       method: 'rename',
@@ -94,7 +91,7 @@ export class SynologyDocsWeb extends WebPlugin {
   }
 
   async delete(path: string): Promise<boolean> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.Delete',
       version: '2',
       method: 'delete',
@@ -103,7 +100,7 @@ export class SynologyDocsWeb extends WebPlugin {
     }).then(res => res.data.success);
   }
 
-  async createFolder(
+  async mkdir(
     path: string,
     name: string,
     force_parent = false,
@@ -112,7 +109,7 @@ export class SynologyDocsWeb extends WebPlugin {
     name: string;
     path: string;
   }> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.CreateFolder',
       version: '2',
       method: 'create',
@@ -122,22 +119,20 @@ export class SynologyDocsWeb extends WebPlugin {
     }).then(res => res.data.folders[0]);
   }
 
-  async getinfo(path: string): Promise<{
-    files: {
-      isdir: boolean;
-      name: string;
-      path: string;
-      additional: {
-        size: number;
-        type: string;
-        time: unknown;
-        real_path: string;
-        perm: unknown;
-        owner: { user: string };
-      };
-    }[];
+  async stat(path: string): Promise<{
+    isdir: boolean;
+    name: string;
+    path: string;
+    additional: {
+      size: number;
+      type: string;
+      time: unknown;
+      real_path: string;
+      perm: unknown;
+      owner: { user: string };
+    };
   }> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.List',
       version: '2',
       method: 'getinfo',
@@ -146,8 +141,8 @@ export class SynologyDocsWeb extends WebPlugin {
     }).then(res => res.data.data?.files[0]);
   }
 
-  async download(path: string): Promise<unknown> {
-    return this.get(`${this.url}/webapi/entry.cgi`, {
+  async readFile(path: string): Promise<unknown> {
+    return this.get('/webapi/entry.cgi', {
       api: 'SYNO.FileStation.Download',
       version: '2',
       method: 'download',
@@ -156,13 +151,13 @@ export class SynologyDocsWeb extends WebPlugin {
     }).then(res => res.data);
   }
 
-  async upload(
+  async writeFile(
     path: string,
     fileName: string,
     content: string,
     type = 'text/plain',
   ): Promise<unknown> {
-    const url = `${this.url}/webapi/entry.cgi`;
+    const url = `${await this.getPreferences('_syno_url')}/webapi/entry.cgi`;
 
     let params = {
       api: 'SYNO.FileStation.Upload',
@@ -170,12 +165,15 @@ export class SynologyDocsWeb extends WebPlugin {
       version: '2',
     } as any;
 
-    if (this.sid && this.sid.length > 0) {
-      params = { ...params, ...{ _sid: this.sid } };
+    const sid = await this.getPreferences('_syno_sid');
+    const synoToken = await this.getPreferences('_syno_token');
+
+    if (sid && sid.length > 0) {
+      params = { ...params, ...{ _sid: sid } };
     }
 
-    if (this.synoToken && this.synoToken.length > 0) {
-      params = { ...params, ...{ SynoToken: this.synoToken } };
+    if (synoToken && synoToken.length > 0) {
+      params = { ...params, ...{ SynoToken: synoToken } };
     }
 
     const file = new File([content], fileName, { type });
@@ -189,16 +187,29 @@ export class SynologyDocsWeb extends WebPlugin {
     return await CapacitorHttp.post(options);
   }
 
+  private getPreferences(key: string) {
+    return Preferences.get({ key }).then(res => {
+      return res.value;
+    });
+  }
+
+  private setPreferences(key: string, value: string) {
+    return Preferences.set({ key, value });
+  }
+
   private async get(
-    url: string,
+    address: string,
     params?: { [key: string]: string | string[] },
   ) {
+    const url = `${await this.getPreferences('_syno_url')}${address}`;
+    const sid = await this.getPreferences('_syno_sid');
+    const synoToken = await this.getPreferences('_syno_token');
     const options = { url, params };
-    if (this.sid && this.sid.length > 0) {
-      options.params = { _sid: this.sid, ...options.params };
+    if (sid && sid.length > 0) {
+      options.params = { _sid: sid, ...options.params };
     }
-    if (this.synoToken && this.synoToken.length > 0) {
-      options.params = { SynoToken: this.synoToken, ...options.params };
+    if (synoToken && synoToken.length > 0) {
+      options.params = { SynoToken: synoToken, ...options.params };
     }
     return await CapacitorHttp.get(options);
   }

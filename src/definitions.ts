@@ -2,13 +2,13 @@ export interface SynologyDocsPlugin {
   echo(options: { value: string }): Promise<{ value: string }>;
   configure(url: string): void;
   auth(username: string, password: string, otp_code?: string): Promise<boolean>;
-  list(path: string): Promise<{
-    folders: {
+  readdir(path: string): Promise<
+    {
       isdir: boolean;
       name: string;
       path: string;
-    }[];
-  }>;
+    }[]
+  >;
   rename(
     path: string,
     newName: string,
@@ -18,7 +18,8 @@ export interface SynologyDocsPlugin {
     path: string;
   }>;
   delete(path: string): Promise<boolean>;
-  createFolder(
+  fileExist(path: string): Promise<boolean>;
+  mkdir(
     path: string,
     name: string,
     force_parent?: boolean,
@@ -27,23 +28,21 @@ export interface SynologyDocsPlugin {
     name: string;
     path: string;
   }>;
-  getinfo(path: string): Promise<{
-    files: {
-      isdir: boolean;
-      name: string;
-      path: string;
-      additional: {
-        size: number;
-        type: string;
-        time: unknown;
-        real_path: string;
-        perm: unknown;
-        owner: { user: string };
-      };
-    }[];
+  stat(path: string): Promise<{
+    isdir: boolean;
+    name: string;
+    path: string;
+    additional: {
+      size: number;
+      type: string;
+      time: unknown;
+      real_path: string;
+      perm: unknown;
+      owner: { user: string };
+    };
   }>;
-  download(path: string): Promise<unknown>;
-  upload(
+  readFile(path: string): Promise<unknown>;
+  writeFile(
     path: string,
     fileName: string,
     content: string,
