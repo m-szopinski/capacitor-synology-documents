@@ -201,7 +201,8 @@ export class SynologyDocsWeb extends WebPlugin {
     address: string,
     params?: { [key: string]: string | string[] },
   ) {
-    const url = `${await this.getPreferences('_syno_url')}${address}`;
+    const baseUrl = await this.getPreferences('_syno_url');
+    const url = `${baseUrl}${address}`;
     const sid = await this.getPreferences('_syno_sid');
     const synoToken = await this.getPreferences('_syno_token');
     const options = { url, params };
