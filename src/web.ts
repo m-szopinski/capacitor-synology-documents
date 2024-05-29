@@ -36,11 +36,11 @@ export class SynologyDocsWeb extends WebPlugin {
     return this.get(`/webapi/auth.cgi`, params).then(async res => {
       const synoToken = res.data?.data?.synotoken;
       if (synoToken) {
-        await this.setPreferences('_syno_token', synoToken);
+        await Preferences.set({ key: '_syno_token', value: synoToken });
       }
       const sid = res.data?.data?.sid;
       if (sid) {
-        await this.setPreferences('_syno_sid', sid);
+        await Preferences.set({ key: '_syno_sid', value: sid });
         return !!(sid && sid.length > 0);
       }
       return false;
@@ -157,7 +157,6 @@ export class SynologyDocsWeb extends WebPlugin {
     content: string,
     type = 'text/plain',
   ): Promise<unknown> {
-    const url = `${await this.getPreferences('_syno_url')}/webapi/entry.cgi`;
 
     let params = {
       api: 'SYNO.FileStation.Upload',
@@ -165,8 +164,10 @@ export class SynologyDocsWeb extends WebPlugin {
       version: '2',
     } as any;
 
-    const sid = await this.getPreferences('_syno_sid');
-    const synoToken = await this.getPreferences('_syno_token');
+    const baseUrl = await Preferences.get({ key: '_syno_url' }).then((res) => res.value);
+    const url = `${baseUrl}/webapi/entry.cgi`;
+    const sid = await Preferences.get({ key: '_syno_sid' }).then((res) => res.value);
+    const synoToken = await Preferences.get({ key: '_syno_token' }).then((res) => res.value);
 
     if (sid && sid.length > 0) {
       params = { ...params, ...{ _sid: sid } };
@@ -187,24 +188,14 @@ export class SynologyDocsWeb extends WebPlugin {
     return await CapacitorHttp.post(options);
   }
 
-  private getPreferences(key: string) {
-    return Preferences.get({ key }).then(res => {
-      return res.value;
-    });
-  }
-
-  private setPreferences(key: string, value: string) {
-    return Preferences.set({ key, value });
-  }
-
   private async get(
     address: string,
     params?: { [key: string]: string | string[] },
   ) {
-    const baseUrl = await this.getPreferences('_syno_url');
+    const baseUrl = await Preferences.get({ key: '_syno_url' }).then((res) => res.value);
     const url = `${baseUrl}${address}`;
-    const sid = await this.getPreferences('_syno_sid');
-    const synoToken = await this.getPreferences('_syno_token');
+    const sid = await Preferences.get({ key: '_syno_sid' }).then((res) => res.value);
+    const synoToken = await Preferences.get({ key: '_syno_token' }).then((res) => res.value);
     const options = { url, params };
     if (sid && sid.length > 0) {
       options.params = { _sid: sid, ...options.params };
