@@ -1,5 +1,4 @@
 import { CapacitorHttp, WebPlugin } from '@capacitor/core';
-import { Preferences } from '@capacitor/preferences';
 
 export class SynologyDocsWeb extends WebPlugin {
   async echo(options: { value: string }): Promise<{ value: string }> {
@@ -36,11 +35,11 @@ export class SynologyDocsWeb extends WebPlugin {
     return this.get(`/webapi/auth.cgi`, params).then(async res => {
       const synoToken = res.data?.data?.synotoken;
       if (synoToken) {
-        await Preferences.set({ key: '_syno_token', value: synoToken });
+        localStorage.setItem('_syno_token', synoToken);
       }
       const sid = res.data?.data?.sid;
       if (sid) {
-        await Preferences.set({ key: '_syno_sid', value: sid });
+        localStorage.setItem('_syno_sid', sid);
         return !!(sid && sid.length > 0);
       }
       return false;
@@ -157,17 +156,16 @@ export class SynologyDocsWeb extends WebPlugin {
     content: string,
     type = 'text/plain',
   ): Promise<unknown> {
-
     let params = {
       api: 'SYNO.FileStation.Upload',
       method: 'upload',
       version: '2',
     } as any;
 
-    const baseUrl = await Preferences.get({ key: '_syno_url' }).then((res) => res.value);
+    const baseUrl = localStorage.getItem('_syno_url');
     const url = `${baseUrl}/webapi/entry.cgi`;
-    const sid = await Preferences.get({ key: '_syno_sid' }).then((res) => res.value);
-    const synoToken = await Preferences.get({ key: '_syno_token' }).then((res) => res.value);
+    const sid = localStorage.getItem('_syno_sid');
+    const synoToken = localStorage.getItem('_syno_token');
 
     if (sid && sid.length > 0) {
       params = { ...params, ...{ _sid: sid } };
@@ -192,10 +190,10 @@ export class SynologyDocsWeb extends WebPlugin {
     address: string,
     params?: { [key: string]: string | string[] },
   ) {
-    const baseUrl = await Preferences.get({ key: '_syno_url' }).then((res) => res.value);
+    const baseUrl = localStorage.getItem('_syno_url');
     const url = `${baseUrl}${address}`;
-    const sid = await Preferences.get({ key: '_syno_sid' }).then((res) => res.value);
-    const synoToken = await Preferences.get({ key: '_syno_token' }).then((res) => res.value);
+    const sid = localStorage.getItem('_syno_sid');
+    const synoToken = localStorage.getItem('_syno_token');
     const options = { url, params };
     if (sid && sid.length > 0) {
       options.params = { _sid: sid, ...options.params };

@@ -1,6 +1,6 @@
 {
   "name": "capacitor-synology-documents",
-  "version": "6.0.2",
+  "version": "6.0.3",
   "description": "Capacitor Synology Documents",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -75,7 +75,5 @@
       "src": "android"
     }
   },
-  "dependencies": {
-    "@capacitor/preferences": "^6.0.0"
-  }
+  "dependencies": {}
 }
