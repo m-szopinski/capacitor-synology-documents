@@ -162,7 +162,7 @@ export class SynologyDocsWeb extends WebPlugin {
       version: '2',
     } as any;
 
-    const baseUrl = localStorage.getItem('_syno_url');
+    const baseUrl = localStorage.getItem('_syno_url') || '';
     const url = `${baseUrl}/webapi/entry.cgi`;
     const sid = localStorage.getItem('_syno_sid');
     const synoToken = localStorage.getItem('_syno_token');
@@ -190,7 +190,7 @@ export class SynologyDocsWeb extends WebPlugin {
     address: string,
     params?: { [key: string]: string | string[] },
   ) {
-    const baseUrl = localStorage.getItem('_syno_url');
+    const baseUrl = localStorage.getItem('_syno_url') || '';
     const url = `${baseUrl}${address}`;
     const sid = localStorage.getItem('_syno_sid');
     const synoToken = localStorage.getItem('_syno_token');
